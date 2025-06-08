@@ -1,15 +1,35 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { NotificationsModule } from './notifications/notifications.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }),
-TypeOrmModule.forRoot({
-    type: 'postgres',
-    url: process.env.DATABASE_URL,
-    port: 5432,
-    username: 'postgres',
-    password: 'UncArnNeYNmUUZyTbrtimpwiqOraxTyD',
-    database: 'railway',
-    entities: [__dirname + `/**/*.entity{.ts,.js}`],
-    synchronize: true,
-  }), NotificationsModule],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        url: configService.get<string>('DATABASE_URL'),
+        autoLoadEntities: true,
+        synchronize: true,
+        ssl: true, // 👈 Requerido para Railway u otros entornos que usan SSL
+        extra: {
+          ssl: {
+            rejectUnauthorized: false, // 👈 Permite SSL sin verificación estricta
+          },
+        },
+      }),
+    }),
+    NotificationsModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
 })
+export class AppModule {}
